@@ -84,8 +84,10 @@ async fn main() {
             let mut data = vec![0; 1024];
             match stream.try_read(&mut data) {
                 Ok(n) => {
-                    let result = core::str::from_utf8(&data).unwrap();
-                    if result == core::str::from_utf8(b"send failed").unwrap() {
+                    let result = String::from(core::str::from_utf8(&data).unwrap());
+                    //let ok_str = String::from("send ok");
+                    //println!("\r\n -- {} , {}\r\n", result, ok_str);
+                    if !result.contains("send ok") {
                         y = y - 16;
                         i = i - 1;
                         println!("\r\n\r\n{} read {} bytes, result {}\r", "=======>".red(), n, result.bold().red());
