@@ -22,8 +22,10 @@ async fn main() {
     let stream = TcpStream::connect("192.168.1.2:1234").await.unwrap();
     let path = Path::new(&param);
     let mut y :u16 = 0;
-//    loop {
-    for i in 0..20 {
+    let mut i :u8 = 0;
+
+    loop {
+    //for i in 0..20 {
     let s_path = path.join("a-".to_owned() + &i.to_string() + ".bmp");
     let display = s_path.display();
     println!("going to send: {}\r", display);
@@ -31,7 +33,7 @@ async fn main() {
         Err(err) => panic!("can't open {}: {:?}", display, err),
         Ok(file) => file,
     };
-
+    i = i + 1;
     let mut ctn = Vec::new();
     file.read_to_end(&mut ctn).unwrap();
     let mut sh = Md5::new();
@@ -43,11 +45,6 @@ async fn main() {
     //let digest = ctx.finish();
     //let hash = digest.iter().map(|x| format!("{:02x}", x)).collect::<String>();
 
-        // 注册可读和可写事件，并等待事件的发生
-        let ready = stream.ready(Interest::WRITABLE).await.unwrap();
-        //stream.try_write(&usize_to_u8_array(ctn.len())).unwrap();
-        // 如果注册的事件中，发生了可写事件，则执行如下代码
-        if ready.is_writable() {
             let file_len = usize_to_u8_array(ctn.len());
             let mut vec = Vec::new();
             vec.push(file_len[0]);
@@ -61,6 +58,11 @@ async fn main() {
             vec.extend(ctn);
             //stream.try_write(&file_len).unwrap();
             println!("file len: {}, hash {:?}\r", (file_len[0] as u16) << 8 | file_len[1] as u16, digest);
+        // 注册可读和可写事件，并等待事件的发生
+        let ready = stream.ready(Interest::WRITABLE).await.unwrap();
+        //stream.try_write(&usize_to_u8_array(ctn.len())).unwrap();
+        // 如果注册的事件中，发生了可写事件，则执行如下代码
+        if ready.is_writable() {
             match stream.try_write(vec.as_slice()) {
                 Ok(n) => {
                     println!("write {} bytes", n);
@@ -82,8 +84,15 @@ async fn main() {
             let mut data = vec![0; 1024];
             match stream.try_read(&mut data) {
                 Ok(n) => {
-                    println!("\r\n\r\n{} read {} bytes, result {}\r", "=======>".red(), n, core::str::from_utf8(&data).unwrap().green());
-                    if i == 19 {
+                    let result = core::str::from_utf8(&data).unwrap();
+                    if result == core::str::from_utf8(b"send failed").unwrap() {
+                        y = y - 16;
+                        i = i - 1;
+                        println!("\r\n\r\n{} read {} bytes, result {}\r", "=======>".red(), n, result.bold().red());
+                    } else {
+                        println!("\r\n\r\n{} read {} bytes, result {}\r", "=======>".red(), n, result.green());
+                    }
+                    if i == 20 {
                         return;
                     }
                     if n != 1000 {
