@@ -23,8 +23,8 @@ async fn main() {
     loop {
     for entry in WalkDir::new(&param) {
     let entry = entry.unwrap();
-    println!("{} {}", entry.path().display(), entry.depth());
     if entry.file_type().is_dir() && entry.depth() == 1 {
+    println!("{} {}", entry.path().display(), entry.depth());
     let path = Path::new(&param);
     let path = path.join(entry.file_name());
     let mut y :u16 = 0;
