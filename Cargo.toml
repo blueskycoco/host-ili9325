@@ -9,3 +9,4 @@ edition = "2021"
 colored = "2.1.0"
 rust-crypto = "0.2.36"
 tokio = { version = "1.35.1", features = ["macros", "rt", "net", "rt-multi-thread"]}
+walkdir = "2.4.0"

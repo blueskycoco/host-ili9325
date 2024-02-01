@@ -7,6 +7,7 @@ use std::path::Path;
 use colored::Colorize;
 use crypto::digest::Digest;
 use crypto::md5::Md5;
+use walkdir::WalkDir;
 
 fn usize_to_u8_array(x: usize) -> [u8; 2] {
   let b1: u8 = ((x >> 8) & 0xff) as u8;
@@ -19,11 +20,18 @@ fn usize_to_u8_array(x: usize) -> [u8; 2] {
 async fn main() {
     let param = std::env::args().nth(1).expect("no param given");
     let stream = TcpStream::connect("192.168.1.2:1234").await.unwrap();
+    loop {
+    for entry in WalkDir::new(&param) {
+    let entry = entry.unwrap();
+    println!("{} {}", entry.path().display(), entry.depth());
+    if entry.file_type().is_dir() && entry.depth() == 1 {
     let path = Path::new(&param);
+    let path = path.join(entry.file_name());
     let mut y :u16 = 0;
     let mut i :u8 = 0;
 
     loop {
+        if i == 20 { break; }
         let s_path = path.join("a-".to_owned() + &i.to_string() + ".bmp");
         let display = s_path.display();
         println!("\r\n\r\ngoing to send: {}\r", display);
@@ -80,17 +88,18 @@ async fn main() {
                             println!("{} read {} bytes, result {}\r",
                                      "=======>".red(), n, result.green());
                         }
-                        if i == 20 { return; }
-                        if n != 1000 { break;}
+                        break;
                     },
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                        println!("WouldBlock ...");
                         continue;
                     },
                     Err(_e) => { return; },
                 }
-            } else {
-                break;
             }
         }
+    }
+    }
+    }
     }
 }
