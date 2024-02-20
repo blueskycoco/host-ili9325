@@ -19,7 +19,8 @@ fn usize_to_u8_array(x: usize) -> [u8; 2] {
 #[tokio::main]
 async fn main() {
     let param = std::env::args().nth(1).expect("no param given");
-    let stream = TcpStream::connect("192.168.1.2:1234").await.unwrap();
+    let addr = std::env::args().nth(2).expect("no addr given, 192.168.1.3:1234");
+    let stream = TcpStream::connect(addr).await.unwrap();
     loop {
     for entry in WalkDir::new(&param) {
     let entry = entry.unwrap();
@@ -36,7 +37,7 @@ async fn main() {
         let display = s_path.display();
         println!("\r\n\r\ngoing to send: {}\r", display);
         let mut file = match File::open(&s_path) {
-            Err(err) => panic!("can't open {}: {:?}", display, err),
+            Err(err) => { println!("can't open {}: {:?}", display, err); break;},
             Ok(file) => file,
         };
         i = i + 1;
