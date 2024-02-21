@@ -18,7 +18,7 @@ fn usize_to_u8_array(x: usize) -> [u8; 2] {
 
 #[tokio::main]
 async fn main() {
-    let param = std::env::args().nth(1).expect("no param given");
+    let param = std::env::args().nth(1).expect("no param given out");
     let addr = std::env::args().nth(2).expect("no addr given, 192.168.1.3:1234");
     let stream = TcpStream::connect(addr).await.unwrap();
     loop {
