@@ -18,7 +18,9 @@ fn usize_to_u8_array(x: usize) -> [u8; 2] {
 
 #[tokio::main]
 async fn main() {
-    let param = std::env::args().nth(1).expect("no folder, eg: ./host-ili9325 /path/to/pic");
+    let param = std::env::args()
+        .nth(1)
+        .expect("no folder, eg: ./host-ili9325 /path/to/pic");
     let addr = std::env::args()
         .nth(2)
         .expect("no addr given, 192.168.1.3:1234");
@@ -72,17 +74,25 @@ async fn main() {
                         (file_len[0] as u16) << 8 | file_len[1] as u16,
                         digest
                     );
-                    let ready = stream.ready(Interest::WRITABLE).await.unwrap();
-                    if ready.is_writable() {
-                        match stream.try_write(vec.as_slice()) {
-                            Ok(n) => {
-                                println!("write {} bytes", n);
-                            }
-                            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                continue;
-                            }
-                            Err(_e) => {
-                                return;
+                    loop {
+                        let ready = stream.ready(Interest::WRITABLE).await.unwrap();
+                        if ready.is_writable() {
+                            match stream.try_write(vec.as_slice()) {
+                                Ok(n) => {
+                                    println!("write {} bytes", n);
+                                    if n == vec.len() {
+                                        println!("send done\r");
+                                        break;
+                                    } else {
+                                        vec = vec.split_off(n);
+                                    }
+                                }
+                                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                                    continue;
+                                }
+                                Err(_e) => {
+                                    return;
+                                }
                             }
                         }
                     }
