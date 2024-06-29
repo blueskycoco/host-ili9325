@@ -79,9 +79,9 @@ async fn main() {
                         if ready.is_writable() {
                             match stream.try_write(vec.as_slice()) {
                                 Ok(n) => {
-                                    println!("write {} bytes", n);
+                                    println!("write {} of {} bytes", n, vec.len());
                                     if n == vec.len() {
-                                        println!("send done\r");
+                                        println!("send {} done\r", vec.len());
                                         break;
                                     } else {
                                         vec = vec.split_off(n);
