@@ -36,7 +36,7 @@ async fn main() {
                 let mut i: u8 = 0;
 
                 loop {
-                    if i == 20 {
+                    if i == 10 {
                         break;
                     }
                     let s_path = path.join("a-".to_owned() + &i.to_string() + ".bmp");
@@ -66,7 +66,7 @@ async fn main() {
                     vec.push(0);
                     vec.push(((y >> 8) & 0xff) as u8);
                     vec.push((y & 0xff) as u8);
-                    y = y + 16;
+                    y = y + 32;
                     vec.extend(ctn);
 
                     println!(
