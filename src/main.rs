@@ -9,11 +9,12 @@ use tokio::io::Interest;
 use tokio::net::TcpStream;
 use walkdir::WalkDir;
 
-fn usize_to_u8_array(x: usize) -> [u8; 2] {
-    let b1: u8 = ((x >> 8) & 0xff) as u8;
-    let b2: u8 = (x & 0xff) as u8;
+fn usize_to_u8_array(x: usize) -> [u8; 3] {
+    let b1: u8 = ((x >> 16) & 0xff) as u8;
+    let b2: u8 = ((x >> 8) & 0xff) as u8;
+    let b3: u8 = (x & 0xff) as u8;
 
-    [b1, b2]
+    [b1, b2, b3]
 }
 
 #[tokio::main]
@@ -38,7 +39,7 @@ async fn main() {
                 let mut i: u8 = 0;
 
                 loop {
-                    if i == 5 {
+                    if i == 2 {
                         break;
                     }
                     let s_path = path.join("a-".to_owned() + &i.to_string() + ".bmp");
@@ -63,12 +64,13 @@ async fn main() {
                     let mut vec = Vec::new();
                     vec.push(file_len[0]);
                     vec.push(file_len[1]);
+                    vec.push(file_len[2]);
                     vec.extend(digest);
                     vec.push(0);
                     vec.push(0);
                     vec.push(((y >> 8) & 0xff) as u8);
                     vec.push((y & 0xff) as u8);
-                    y = y + 64;
+                    y = y + 160;
                     vec.extend(ctn);
 
                     println!(
