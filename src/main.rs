@@ -24,7 +24,9 @@ async fn main() {
     let addr = std::env::args()
         .nth(2)
         .expect("no addr given, 192.168.1.3:1234");
+    println!("to connect usr232-wifi-t");
     let stream = TcpStream::connect(addr).await.unwrap();
+    println!("usr232-wifi-t connected");
     loop {
         for entry in WalkDir::new(&param) {
             let entry = entry.unwrap();
@@ -36,7 +38,7 @@ async fn main() {
                 let mut i: u8 = 0;
 
                 loop {
-                    if i == 10 {
+                    if i == 5 {
                         break;
                     }
                     let s_path = path.join("a-".to_owned() + &i.to_string() + ".bmp");
@@ -66,7 +68,7 @@ async fn main() {
                     vec.push(0);
                     vec.push(((y >> 8) & 0xff) as u8);
                     vec.push((y & 0xff) as u8);
-                    y = y + 32;
+                    y = y + 64;
                     vec.extend(ctn);
 
                     println!(
