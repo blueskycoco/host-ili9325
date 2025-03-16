@@ -11,6 +11,7 @@ use walkdir::WalkDir;
 use chrono::{DateTime, FixedOffset, Local, Utc};
 use std::time::Duration;
 use serialport::{DataBits, StopBits};
+use std::thread;
 
 fn usize_to_u8_array(x: usize) -> [u8; 2] {
     let b1: u8 = ((x >> 8) & 0xff) as u8;
@@ -39,7 +40,7 @@ async fn main() {
     //let stream = TcpStream::connect(addr).await.unwrap();
     //println!("usr232-wifi-t connected");
     
-    let builder = serialport::new(&addr, 115_200)
+    let builder = serialport::new(&addr, 921_600)
         .stop_bits(StopBits::One)
         .data_bits(DataBits::Eight);
     println!("{:?}", &builder);
@@ -61,6 +62,7 @@ async fn main() {
 
                 loop {
                     if i == 20 {
+                        thread::sleep(Duration::from_millis(3000));
                         break;
                     }
                     let s_path = path.join("a-".to_owned() + &i.to_string() + ".bmp");
