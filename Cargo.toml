@@ -13,6 +13,7 @@ walkdir = "2.4.0"
 time = { version = "^0.3.7", optional = true }
 rsntp = "4.0.0"
 chrono = "^0.4.10"
+serialport = "4.6.0"
 
 [profile.release]
 strip = true

@@ -9,13 +9,14 @@ use tokio::io::Interest;
 use tokio::net::TcpStream;
 use walkdir::WalkDir;
 use chrono::{DateTime, FixedOffset, Local, Utc};
+use std::time::Duration;
+use serialport::{DataBits, StopBits};
 
-fn usize_to_u8_array(x: usize) -> [u8; 3] {
-    let b1: u8 = ((x >> 16) & 0xff) as u8;
-    let b2: u8 = ((x >> 8) & 0xff) as u8;
-    let b3: u8 = (x & 0xff) as u8;
+fn usize_to_u8_array(x: usize) -> [u8; 2] {
+    let b1: u8 = ((x >> 8) & 0xff) as u8;
+    let b2: u8 = (x & 0xff) as u8;
 
-    [b1, b2, b3]
+    [b1, b2]
 }
 
 #[tokio::main]
@@ -25,17 +26,29 @@ async fn main() {
         .expect("no folder, eg: ./host-ili9325 /path/to/pic");
     let addr = std::env::args()
         .nth(2)
-        .expect("no addr given, 192.168.1.3:1234");
+        .expect("no tty given, /dev/ttyACM0");
     
+    let mut serial_buf: Vec<u8> = vec![0; 7];
     let client = rsntp::AsyncSntpClient::new();
     let time_info = client.synchronize("pool.ntp.org").await.unwrap();
     let datetime_utc: DateTime<Utc> = time_info.datetime().try_into().unwrap();
     let local_time: DateTime<Local> = DateTime::from(datetime_utc);
     println!("Local time: {}", local_time.with_timezone(&FixedOffset::east_opt(8*3600).unwrap()));
 
-    println!("to connect usr232-wifi-t");
-    let stream = TcpStream::connect(addr).await.unwrap();
-    println!("usr232-wifi-t connected");
+    //println!("to connect usr232-wifi-t");
+    //let stream = TcpStream::connect(addr).await.unwrap();
+    //println!("usr232-wifi-t connected");
+    
+    let builder = serialport::new(&addr, 115_200)
+        .stop_bits(StopBits::One)
+        .data_bits(DataBits::Eight);
+    println!("{:?}", &builder);
+    let mut port = builder.open().unwrap_or_else(|e| {
+        eprintln!("Failed to open \"{}\". Error: {}", addr, e);
+        ::std::process::exit(1);
+    });
+    port.set_timeout(Duration::from_millis(3000)).ok();
+    
     loop {
         for entry in WalkDir::new(&param) {
             let entry = entry.unwrap();
@@ -47,7 +60,7 @@ async fn main() {
                 let mut i: u8 = 0;
 
                 loop {
-                    if i == 2 {
+                    if i == 20 {
                         break;
                     }
                     let s_path = path.join("a-".to_owned() + &i.to_string() + ".bmp");
@@ -72,13 +85,12 @@ async fn main() {
                     let mut vec = Vec::new();
                     vec.push(file_len[0]);
                     vec.push(file_len[1]);
-                    vec.push(file_len[2]);
                     vec.extend(digest);
                     vec.push(0);
                     vec.push(0);
                     vec.push(((y >> 8) & 0xff) as u8);
                     vec.push((y & 0xff) as u8);
-                    y = y + 160;
+                    y = y + 16;
                     vec.extend(ctn);
 
                     println!(
@@ -86,6 +98,21 @@ async fn main() {
                         (file_len[0] as u16) << 8 | file_len[1] as u16,
                         digest
                     );
+                    match port.write_all(&vec) {
+                        Ok(t) => {
+                            println!("send ok {:?}", t);
+                        }
+                        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                        Err(e) => eprintln!("{:?}", e),
+                    }
+                    match port.read_exact(serial_buf.as_mut_slice()) {
+                        Ok(t) => {
+                            println!("recv: {}", std::str::from_utf8(&serial_buf).unwrap());
+                        }
+                        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                        Err(e) => eprintln!("{:?}", e),
+                    }
+                    /*
                     loop {
                         let ready = stream.ready(Interest::WRITABLE).await.unwrap();
                         if ready.is_writable() {
@@ -144,7 +171,7 @@ async fn main() {
                                 }
                             }
                         }
-                    }
+                    }*/
                 }
             }
         }
