@@ -8,6 +8,7 @@ use std::path::Path;
 use tokio::io::Interest;
 use tokio::net::TcpStream;
 use walkdir::WalkDir;
+use chrono::{DateTime, FixedOffset, Local, Utc};
 
 fn usize_to_u8_array(x: usize) -> [u8; 3] {
     let b1: u8 = ((x >> 16) & 0xff) as u8;
@@ -25,6 +26,13 @@ async fn main() {
     let addr = std::env::args()
         .nth(2)
         .expect("no addr given, 192.168.1.3:1234");
+    
+    let client = rsntp::AsyncSntpClient::new();
+    let time_info = client.synchronize("pool.ntp.org").await.unwrap();
+    let datetime_utc: DateTime<Utc> = time_info.datetime().try_into().unwrap();
+    let local_time: DateTime<Local> = DateTime::from(datetime_utc);
+    println!("Local time: {}", local_time.with_timezone(&FixedOffset::east_opt(8*3600).unwrap()));
+
     println!("to connect usr232-wifi-t");
     let stream = TcpStream::connect(addr).await.unwrap();
     println!("usr232-wifi-t connected");
