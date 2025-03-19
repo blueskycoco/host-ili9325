@@ -2,4 +2,4 @@
 linker = "arm-linux-gnueabihf-gcc"
 
 [target.armv5te-unknown-linux-gnueabi]
-linker = "arm-buildroot-linux-gnueabi-gcc"
+linker = "arm-buildroot-linux-uclibcgnueabi-gcc"
