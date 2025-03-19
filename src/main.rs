@@ -1,12 +1,9 @@
-use colored::Colorize;
 use crypto::digest::Digest;
 use crypto::md5::Md5;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
-use tokio::io::Interest;
-use tokio::net::TcpStream;
 use walkdir::WalkDir;
 use chrono::{DateTime, FixedOffset, Local, Utc};
 use std::time::Duration;
@@ -36,10 +33,6 @@ async fn main() {
     let local_time: DateTime<Local> = DateTime::from(datetime_utc);
     println!("Local time: {}", local_time.with_timezone(&FixedOffset::east_opt(8*3600).unwrap()));
 
-    //println!("to connect usr232-wifi-t");
-    //let stream = TcpStream::connect(addr).await.unwrap();
-    //println!("usr232-wifi-t connected");
-    
     let builder = serialport::new(&addr, 921_600)
         .stop_bits(StopBits::One)
         .data_bits(DataBits::Eight);
@@ -96,7 +89,7 @@ async fn main() {
                     vec.extend(ctn);
 
                     println!(
-                        "file len: {}, hash {:?}\r",
+                        "file len: {}, hash {:02x?}\r",
                         (file_len[0] as u16) << 8 | file_len[1] as u16,
                         digest
                     );
@@ -108,72 +101,12 @@ async fn main() {
                         Err(e) => eprintln!("{:?}", e),
                     }
                     match port.read_exact(serial_buf.as_mut_slice()) {
-                        Ok(t) => {
+                        Ok(_t) => {
                             println!("recv: {}", std::str::from_utf8(&serial_buf).unwrap());
                         }
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
                     }
-                    /*
-                    loop {
-                        let ready = stream.ready(Interest::WRITABLE).await.unwrap();
-                        if ready.is_writable() {
-                            match stream.try_write(vec.as_slice()) {
-                                Ok(n) => {
-                                    println!("write {} of {} bytes", n, vec.len());
-                                    if n == vec.len() {
-                                        println!("send {} done\r", vec.len());
-                                        break;
-                                    } else {
-                                        vec = vec.split_off(n);
-                                    }
-                                }
-                                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                    continue;
-                                }
-                                Err(_e) => {
-                                    return;
-                                }
-                            }
-                        }
-                    }
-
-                    loop {
-                        let ready = stream.ready(Interest::READABLE).await.unwrap();
-                        if ready.is_readable() {
-                            let mut data = vec![0; 1024];
-                            match stream.try_read(&mut data) {
-                                Ok(n) => {
-                                    let result = String::from(core::str::from_utf8(&data).unwrap());
-                                    if !result.contains("send ok") {
-                                        y = y - 16;
-                                        i = i - 1;
-                                        println!(
-                                            "{} read {} bytes, result {}\r",
-                                            "=======>".red(),
-                                            n,
-                                            result.bold().red()
-                                        );
-                                    } else {
-                                        println!(
-                                            "{} read {} bytes, result {}\r",
-                                            "=======>".red(),
-                                            n,
-                                            result.green()
-                                        );
-                                    }
-                                    break;
-                                }
-                                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                    println!("WouldBlock ...");
-                                    continue;
-                                }
-                                Err(_e) => {
-                                    return;
-                                }
-                            }
-                        }
-                    }*/
                 }
             }
         }
