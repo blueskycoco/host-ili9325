@@ -9,6 +9,7 @@ use chrono::{DateTime, FixedOffset, Local, Utc};
 use std::time::Duration;
 use serialport::{DataBits, StopBits};
 use std::thread;
+use colored::Colorize;
 
 fn usize_to_u8_array(x: usize) -> [u8; 2] {
     let b1: u8 = ((x >> 8) & 0xff) as u8;
@@ -94,15 +95,13 @@ async fn main() {
                         digest
                     );
                     match port.write_all(&vec) {
-                        Ok(t) => {
-                            println!("send ok {:?}", t);
-                        }
+                        Ok(_) => {},
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
                     }
                     match port.read_exact(serial_buf.as_mut_slice()) {
                         Ok(_t) => {
-                            println!("recv: {}", std::str::from_utf8(&serial_buf).unwrap());
+                            println!("recv: {}", std::str::from_utf8(&serial_buf).unwrap().green());
                         }
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
