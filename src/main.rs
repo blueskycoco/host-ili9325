@@ -11,11 +11,12 @@ use std::thread;
 use std::time::Duration;
 use walkdir::WalkDir;
 
-fn usize_to_u8_array(x: usize) -> [u8; 2] {
-    let b1: u8 = ((x >> 8) & 0xff) as u8;
-    let b2: u8 = (x & 0xff) as u8;
+fn usize_to_u8_array(x: usize) -> [u8; 3] {
+    let b1: u8 = ((x >> 16) & 0xff) as u8;
+    let b2: u8 = ((x >> 8) & 0xff) as u8;
+    let b3: u8 = (x & 0xff) as u8;
 
-    [b1, b2]
+    [b1, b2, b3]
 }
 
 #[tokio::main]
@@ -56,7 +57,7 @@ async fn main() {
                 let mut i: u8 = 0;
 
                 loop {
-                    if i == 20 {
+                    if i == 2 {
                         thread::sleep(Duration::from_millis(3000));
                         break;
                     }
@@ -82,12 +83,13 @@ async fn main() {
                     let mut vec = Vec::new();
                     vec.push(file_len[0]);
                     vec.push(file_len[1]);
+                    vec.push(file_len[2]);
                     vec.extend(digest);
                     vec.push(0);
                     vec.push(0);
                     vec.push(((y >> 8) & 0xff) as u8);
                     vec.push((y & 0xff) as u8);
-                    y = y + 16;
+                    y = y + 160;
                     vec.extend(ctn);
 
                     println!(
