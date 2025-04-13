@@ -1,15 +1,15 @@
+use chrono::{DateTime, FixedOffset, Local, Utc};
+use colored::Colorize;
 use crypto::digest::Digest;
 use crypto::md5::Md5;
+use serialport::{DataBits, StopBits};
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
-use walkdir::WalkDir;
-use chrono::{DateTime, FixedOffset, Local, Utc};
-use std::time::Duration;
-use serialport::{DataBits, StopBits};
 use std::thread;
-use colored::Colorize;
+use std::time::Duration;
+use walkdir::WalkDir;
 
 fn usize_to_u8_array(x: usize) -> [u8; 2] {
     let b1: u8 = ((x >> 8) & 0xff) as u8;
@@ -23,18 +23,19 @@ async fn main() {
     let param = std::env::args()
         .nth(1)
         .expect("no folder, eg: ./host-ili9325 /path/to/pic");
-    let addr = std::env::args()
-        .nth(2)
-        .expect("no tty given, /dev/ttyACM0");
-    
+    let addr = std::env::args().nth(2).expect("no tty given, /dev/ttyACM0");
+
     let mut serial_buf: Vec<u8> = vec![0; 7];
     let client = rsntp::AsyncSntpClient::new();
     let time_info = client.synchronize("pool.ntp.org").await.unwrap();
     let datetime_utc: DateTime<Utc> = time_info.datetime().try_into().unwrap();
     let local_time: DateTime<Local> = DateTime::from(datetime_utc);
-    println!("Local time: {}", local_time.with_timezone(&FixedOffset::east_opt(8*3600).unwrap()));
+    println!(
+        "Local time: {}",
+        local_time.with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
+    );
 
-    let builder = serialport::new(&addr, 921_600)
+    let builder = serialport::new(&addr, 2_000_000)
         .stop_bits(StopBits::One)
         .data_bits(DataBits::Eight);
     println!("{:?}", &builder);
@@ -43,7 +44,7 @@ async fn main() {
         ::std::process::exit(1);
     });
     port.set_timeout(Duration::from_millis(3000)).ok();
-    
+
     loop {
         for entry in WalkDir::new(&param) {
             let entry = entry.unwrap();
@@ -95,13 +96,16 @@ async fn main() {
                         digest
                     );
                     match port.write_all(&vec) {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
                     }
                     match port.read_exact(serial_buf.as_mut_slice()) {
                         Ok(_t) => {
-                            println!("recv: {}", std::str::from_utf8(&serial_buf).unwrap().green());
+                            println!(
+                                "recv: {}",
+                                std::str::from_utf8(&serial_buf).unwrap().green()
+                            );
                         }
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
