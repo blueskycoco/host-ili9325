@@ -92,7 +92,7 @@ async fn main() {
 
                     println!(
                         "file len: {}, hash {:02x?}\r",
-                        (file_len[0] as u16) << 8 | file_len[1] as u16,
+                        ((file_len[0] as u16) << 8) | file_len[1] as u16,
                         digest
                     );
                     match port.write_all(&vec) {
