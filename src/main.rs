@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset, Local, Utc};
+//use chrono::{DateTime, FixedOffset, Local, Utc};
 use colored::Colorize;
 use crypto::digest::Digest;
 use crypto::md5::Md5;
@@ -26,16 +26,16 @@ async fn main() {
         .expect("no folder, eg: ./host-ili9325 /path/to/pic");
     let addr = std::env::args().nth(2).expect("no tty given, /dev/ttyACM0");
 
-    let mut serial_buf: Vec<u8> = vec![0; 7];
-    let client = rsntp::AsyncSntpClient::new();
-    let time_info = client.synchronize("pool.ntp.org").await.unwrap();
-    let datetime_utc: DateTime<Utc> = time_info.datetime().try_into().unwrap();
-    let local_time: DateTime<Local> = DateTime::from(datetime_utc);
-    println!(
-        "Local time: {}",
-        local_time.with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
-    );
-
+    let mut serial_buf: Vec<u8> = vec![0; 1024];
+    /*    let client = rsntp::AsyncSntpClient::new();
+        let time_info = client.synchronize("pool.ntp.org").await.unwrap();
+        let datetime_utc: DateTime<Utc> = time_info.datetime().try_into().unwrap();
+        let local_time: DateTime<Local> = DateTime::from(datetime_utc);
+        println!(
+            "Local time: {}",
+            local_time.with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
+        );
+    */
     let builder = serialport::new(&addr, 2_000_000)
         .stop_bits(StopBits::One)
         .data_bits(DataBits::Eight);
@@ -71,7 +71,7 @@ async fn main() {
                         }
                         Ok(file) => file,
                     };
-                    i = i + 1;
+                    i += 1;
                     let mut ctn = Vec::new();
                     file.read_to_end(&mut ctn).unwrap();
                     let mut sh = Md5::new();
@@ -89,7 +89,7 @@ async fn main() {
                     vec.push(0);
                     vec.push(((y >> 8) & 0xff) as u8);
                     vec.push((y & 0xff) as u8);
-                    y = y + 160;
+                    y += 160;
                     vec.extend(ctn);
 
                     println!(
