@@ -1,4 +1,4 @@
-//use chrono::{DateTime, FixedOffset, Local, Utc};
+use chrono::{DateTime, FixedOffset, Local, Utc};
 use colored::Colorize;
 use crypto::digest::Digest;
 use crypto::md5::Md5;
@@ -10,6 +10,79 @@ use std::path::Path;
 use std::thread;
 use std::time::Duration;
 use walkdir::WalkDir;
+
+use std::convert::TryFrom;
+use std::net::ToSocketAddrs;
+use std::sync::Arc;
+use tokio::io::split;
+use tokio::io::{copy, stdout as tokio_stdout, AsyncWriteExt};
+use tokio::io::{ReadHalf, WriteHalf};
+use tokio::net::TcpStream;
+use tokio_rustls::rustls::{self, ClientConfig, OwnedTrustAnchor, RootCertStore};
+use tokio_rustls::TlsConnector;
+
+struct NoCertVerifier {}
+
+impl rustls::client::ServerCertVerifier for NoCertVerifier {
+    fn verify_server_cert(
+        &self,
+        _end_entity: &rustls::Certificate,
+        _intermediates: &[rustls::Certificate],
+        _server_name: &rustls::ServerName,
+        _scts: &mut dyn Iterator<Item = &[u8]>,
+        _ocsp_response: &[u8],
+        _now: std::time::SystemTime,
+    ) -> Result<rustls::client::ServerCertVerified, rustls::Error> {
+        Ok(rustls::client::ServerCertVerified::assertion())
+    }
+}
+
+pub async fn connect(
+    dst_addr: &str,
+    dst_port: u16,
+    sni: &str,
+    allow_insecure: bool,
+) -> io::Result<(
+    ReadHalf<tokio_rustls::client::TlsStream<tokio::net::TcpStream>>,
+    WriteHalf<tokio_rustls::client::TlsStream<tokio::net::TcpStream>>,
+)> {
+    let addr = (dst_addr, dst_port)
+        .to_socket_addrs()?
+        .next()
+        .ok_or_else(|| io::Error::from(io::ErrorKind::NotFound))?;
+
+    let mut root_store = RootCertStore::empty();
+    root_store.add_server_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.0.iter().map(|ta| {
+        OwnedTrustAnchor::from_subject_spki_name_constraints(
+            ta.subject,
+            ta.spki,
+            ta.name_constraints,
+        )
+    }));
+    let mut config = ClientConfig::builder()
+        .with_safe_defaults()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+
+    if allow_insecure {
+        config
+            .dangerous()
+            .set_certificate_verifier(Arc::new(NoCertVerifier {}));
+    }
+
+    let connector = TlsConnector::from(Arc::new(config));
+    let stream = TcpStream::connect(&addr).await?;
+
+    let domain = rustls::ServerName::try_from(sni)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid dnsname"))?;
+
+    let stream = connector.connect(domain, stream).await?;
+    // stream.write_all(content.as_bytes()).await?;
+
+    // let (mut reader, mut writer) = split(stream);
+
+    Ok(split(stream))
+}
 
 fn usize_to_u8_array(x: usize) -> [u8; 3] {
     let b1: u8 = ((x >> 16) & 0xff) as u8;
@@ -27,15 +100,30 @@ async fn main() {
     let addr = std::env::args().nth(2).expect("no tty given, /dev/ttyACM0");
 
     let mut serial_buf: Vec<u8> = vec![0; 1024];
-    /*    let client = rsntp::AsyncSntpClient::new();
-        let time_info = client.synchronize("pool.ntp.org").await.unwrap();
-        let datetime_utc: DateTime<Utc> = time_info.datetime().try_into().unwrap();
-        let local_time: DateTime<Local> = DateTime::from(datetime_utc);
-        println!(
-            "Local time: {}",
-            local_time.with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
-        );
-    */
+    let client = rsntp::AsyncSntpClient::new();
+    let time_info = client.synchronize("pool.ntp.org").await.unwrap();
+    let datetime_utc: DateTime<Utc> = time_info.datetime().try_into().unwrap();
+    let local_time: DateTime<Local> = DateTime::from(datetime_utc);
+    println!(
+        "Local time: {}",
+        local_time.with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
+    );
+
+    let allow_insecure = false;
+    // let sni = "www.baidu.com";
+    // let dst_addr = "www.baidu.com";
+    let sni = "devapi.qweather.com";
+    let dst_addr = "/airquality/v1/current/39.95/116.46";
+    let dst_port = 443;
+    let content = format!("GET / --compressed -H \'X-QW-Api-Key: c8cd8ac05fcb4808baf95c58c94c2fe8\' HTTP/1.1\r\nHost: {}\r\n\r\n", sni);
+
+    let (mut reader, mut writer) = connect(dst_addr, dst_port, sni, allow_insecure)
+        .await
+        .unwrap();
+    writer.write_all(content.as_bytes()).await.unwrap();
+    let mut stdout = tokio_stdout();
+    copy(&mut reader, &mut stdout).await.unwrap();
+
     let builder = serialport::new(&addr, 2_000_000)
         .stop_bits(StopBits::One)
         .data_bits(DataBits::Eight);

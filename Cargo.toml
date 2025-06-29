@@ -8,12 +8,17 @@ edition = "2021"
 [dependencies]
 colored = "2.1.0"
 rust-crypto = "0.2.36"
-tokio = { version = "1.35.1", features = ["macros", "rt", "net", "rt-multi-thread"]}
+tokio = { version = "1.35.1", features = ["full"]}
 walkdir = "2.4.0"
 time = { version = "^0.3.7", optional = true }
 rsntp = "4.0.0"
 chrono = "^0.4.10"
 serialport = "4.6.0"
+tokio-rustls = { version = "0.23.4", features = ["dangerous_configuration"] }
+webpki-roots = "0.22"
+lazy_static = "1.4.0"
+regex = "1.5.4"
+rustls-pemfile = "0.2"
 
 [profile.release]
 strip = true
