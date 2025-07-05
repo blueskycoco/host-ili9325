@@ -100,6 +100,7 @@ async fn main() {
     let addr = std::env::args().nth(2).expect("no tty given, /dev/ttyACM0");
 
     let mut serial_buf: Vec<u8> = vec![0; 1024];
+
     let client = rsntp::AsyncSntpClient::new();
     let time_info = client.synchronize("pool.ntp.org").await.unwrap();
     let datetime_utc: DateTime<Utc> = time_info.datetime().try_into().unwrap();
@@ -108,14 +109,13 @@ async fn main() {
         "Local time: {}",
         local_time.with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
     );
-
     let allow_insecure = false;
     // let sni = "www.baidu.com";
     // let dst_addr = "www.baidu.com";
     let sni = "devapi.qweather.com";
-    let dst_addr = "/airquality/v1/current/39.95/116.46";
+    let dst_addr = "devapi.qweather.com";
     let dst_port = 443;
-    let content = format!("GET / --compressed -H \'X-QW-Api-Key: c8cd8ac05fcb4808baf95c58c94c2fe8\' HTTP/1.1\r\nHost: {}\r\n\r\n", sni);
+    let content = format!("GET /airquality/v1/current/39.95/116.46 HTTP/1.1\r\nX-QW-Api-Key: c8cd8ac05fcb4808baf95c58c94c2fe8\r\nHost: {}\r\n\r\n", sni);
 
     let (mut reader, mut writer) = connect(dst_addr, dst_port, sni, allow_insecure)
         .await
