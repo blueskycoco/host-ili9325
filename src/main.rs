@@ -15,7 +15,7 @@ use std::convert::TryFrom;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use tokio::io::split;
-use tokio::io::{copy, stdout as tokio_stdout, AsyncWriteExt};
+use tokio::io::{copy, AsyncWriteExt};
 use tokio::io::{ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio_rustls::rustls::{self, ClientConfig, OwnedTrustAnchor, RootCertStore};
@@ -23,7 +23,6 @@ use tokio_rustls::TlsConnector;
 
 use async_compression::tokio::write::GzipDecoder;
 use hwclock::HwClockDev;
-use tokio::io::AsyncWriteExt as _; // for `write_all` and `shutdown`
 
 struct NoCertVerifier {}
 
@@ -142,7 +141,9 @@ async fn main() {
         Some(ofs) => {
             let rsp = rsp.split_off(ofs - 1);
             let body = decompress(&rsp).await.unwrap();
-            println!("{:?}", String::from_utf8(body).unwrap());
+            let json = String::from_utf8(body).unwrap();
+            let json: serde_json::Value = serde_json::from_str(&json.as_str()).unwrap();
+            println!("{} ---> {:#?}", json["indexes"], json);
         }
         None => println!("can't find gzip header"),
     }
