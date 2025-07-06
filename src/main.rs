@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset, Local, Utc};
+use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
 use colored::Colorize;
 use crypto::digest::Digest;
 use crypto::md5::Md5;
@@ -20,6 +20,8 @@ use tokio::io::{ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio_rustls::rustls::{self, ClientConfig, OwnedTrustAnchor, RootCertStore};
 use tokio_rustls::TlsConnector;
+
+use hwclock::HwClockDev;
 
 struct NoCertVerifier {}
 
@@ -109,6 +111,9 @@ async fn main() {
         "Local time: {}",
         local_time.with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
     );
+    let ct: NaiveDateTime = datetime_utc.naive_local();
+    let rtc = HwClockDev::open("/dev/rtc0").expect("can't open rtc dev");
+    rtc.set_time(&ct.into()).expect("can't set rtc time");
     let allow_insecure = false;
     // let sni = "www.baidu.com";
     // let dst_addr = "www.baidu.com";
