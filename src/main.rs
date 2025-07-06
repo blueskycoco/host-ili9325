@@ -21,7 +21,9 @@ use tokio::net::TcpStream;
 use tokio_rustls::rustls::{self, ClientConfig, OwnedTrustAnchor, RootCertStore};
 use tokio_rustls::TlsConnector;
 
+use async_compression::tokio::write::GzipDecoder;
 use hwclock::HwClockDev;
+use tokio::io::AsyncWriteExt as _; // for `write_all` and `shutdown`
 
 struct NoCertVerifier {}
 
@@ -86,6 +88,13 @@ pub async fn connect(
     Ok(split(stream))
 }
 
+async fn decompress(in_data: &[u8]) -> Result<Vec<u8>, &str> {
+    let mut decoder = GzipDecoder::new(Vec::new());
+    decoder.write_all(in_data).await.unwrap();
+    decoder.shutdown().await.unwrap();
+    Ok(decoder.into_inner())
+}
+
 fn usize_to_u8_array(x: usize) -> [u8; 3] {
     let b1: u8 = ((x >> 16) & 0xff) as u8;
     let b2: u8 = ((x >> 8) & 0xff) as u8;
@@ -126,8 +135,17 @@ async fn main() {
         .await
         .unwrap();
     writer.write_all(content.as_bytes()).await.unwrap();
-    let mut stdout = tokio_stdout();
-    copy(&mut reader, &mut stdout).await.unwrap();
+    let mut rsp: Vec<u8> = Vec::new();
+    copy(&mut reader, &mut rsp).await.unwrap();
+    //println!("{:?}", String::from_utf8(rsp.clone()).unwrap());
+    match rsp.iter().position(|&b| b == 139) {
+        Some(ofs) => {
+            let rsp = rsp.split_off(ofs - 1);
+            let body = decompress(&rsp).await.unwrap();
+            println!("{:?}", String::from_utf8(body).unwrap());
+        }
+        None => println!("can't find gzip header"),
+    }
 
     let builder = serialport::new(&addr, 2_000_000)
         .stop_bits(StopBits::One)

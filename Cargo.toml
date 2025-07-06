@@ -20,6 +20,7 @@ lazy_static = "1.4.0"
 regex = "1.5.4"
 rustls-pemfile = "0.2"
 hwclock = "0.2.0"
+async-compression = { version = "0.4.25", features = ["gzip", "tokio"] }
 
 [profile.release]
 strip = true
