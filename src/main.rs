@@ -124,22 +124,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let rtc = HwClockDev::open("/dev/rtc0").expect("can't open rtc dev");
     rtc.set_time(&ct.into()).expect("can't set rtc time");
     let allow_insecure = false;
-    // let sni = "www.baidu.com";
-    // let dst_addr = "www.baidu.com";
     let sni = "devapi.qweather.com";
     let dst_addr = "devapi.qweather.com";
     let dst_port = 443;
     let content = format!("GET /airquality/v1/current/39.95/116.46 HTTP/1.1\r\nX-QW-Api-Key: c8cd8ac05fcb4808baf95c58c94c2fe8\r\nHost: {}\r\n\r\n", sni);
 
-    println!("waiting for data 1");
     let (mut reader, mut writer) = connect(dst_addr, dst_port, sni, allow_insecure).await?;
-    println!("waiting for data 2");
     writer.write_all(content.as_bytes()).await?;
     let mut rsp: Vec<u8> = Vec::new();
-    println!("waiting for data 3");
-    copy(&mut reader, &mut rsp).await?;
-    println!("waiting for data 4");
-    //println!("{:?}", String::from_utf8(rsp.clone()).unwrap());
+    let duration = tokio::time::Duration::from_millis(500);
+    while let Ok(n) = tokio::time::timeout(duration, copy(&mut reader, &mut rsp)).await {
+        println!("read {:#?} bytes", n);
+    }
     match rsp.iter().position(|&b| b == 139) {
         Some(ofs) => {
             let rsp = rsp.split_off(ofs - 1);
