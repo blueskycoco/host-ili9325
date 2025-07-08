@@ -3,6 +3,7 @@ use colored::Colorize;
 use crypto::digest::Digest;
 use crypto::md5::Md5;
 use serialport::{DataBits, StopBits};
+use std::error::Error;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
@@ -103,7 +104,7 @@ fn usize_to_u8_array(x: usize) -> [u8; 3] {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn Error>> {
     let param = std::env::args()
         .nth(1)
         .expect("no folder, eg: ./host-ili9325 /path/to/pic");
@@ -112,8 +113,8 @@ async fn main() {
     let mut serial_buf: Vec<u8> = vec![0; 1024];
 
     let client = rsntp::AsyncSntpClient::new();
-    let time_info = client.synchronize("pool.ntp.org").await.unwrap();
-    let datetime_utc: DateTime<Utc> = time_info.datetime().try_into().unwrap();
+    let time_info = client.synchronize("pool.ntp.org").await?;
+    let datetime_utc: DateTime<Utc> = time_info.datetime().try_into()?;
     let local_time: DateTime<Local> = DateTime::from(datetime_utc);
     println!(
         "Local time: {}",
@@ -130,19 +131,21 @@ async fn main() {
     let dst_port = 443;
     let content = format!("GET /airquality/v1/current/39.95/116.46 HTTP/1.1\r\nX-QW-Api-Key: c8cd8ac05fcb4808baf95c58c94c2fe8\r\nHost: {}\r\n\r\n", sni);
 
-    let (mut reader, mut writer) = connect(dst_addr, dst_port, sni, allow_insecure)
-        .await
-        .unwrap();
-    writer.write_all(content.as_bytes()).await.unwrap();
+    println!("waiting for data 1");
+    let (mut reader, mut writer) = connect(dst_addr, dst_port, sni, allow_insecure).await?;
+    println!("waiting for data 2");
+    writer.write_all(content.as_bytes()).await?;
     let mut rsp: Vec<u8> = Vec::new();
-    copy(&mut reader, &mut rsp).await.unwrap();
+    println!("waiting for data 3");
+    copy(&mut reader, &mut rsp).await?;
+    println!("waiting for data 4");
     //println!("{:?}", String::from_utf8(rsp.clone()).unwrap());
     match rsp.iter().position(|&b| b == 139) {
         Some(ofs) => {
             let rsp = rsp.split_off(ofs - 1);
-            let body = decompress(&rsp).await.unwrap();
-            let json = String::from_utf8(body).unwrap();
-            let json: serde_json::Value = serde_json::from_str(&json.as_str()).unwrap();
+            let body = decompress(&rsp).await?;
+            let json = String::from_utf8(body)?;
+            let json: serde_json::Value = serde_json::from_str(json.as_str())?;
             println!("{} ---> {:#?}", json["indexes"], json);
         }
         None => println!("can't find gzip header"),
@@ -160,7 +163,7 @@ async fn main() {
 
     loop {
         for entry in WalkDir::new(&param) {
-            let entry = entry.unwrap();
+            let entry = entry?;
             if entry.file_type().is_dir() && entry.depth() == 1 {
                 println!("{} {}", entry.path().display(), entry.depth());
                 let path = Path::new(&param);
@@ -185,7 +188,7 @@ async fn main() {
                     };
                     i += 1;
                     let mut ctn = Vec::new();
-                    file.read_to_end(&mut ctn).unwrap();
+                    file.read_to_end(&mut ctn)?;
                     let mut sh = Md5::new();
                     sh.input(&ctn);
                     let mut digest: [u8; 16] = [0; 16];
@@ -216,10 +219,7 @@ async fn main() {
                     }
                     match port.read_exact(serial_buf.as_mut_slice()) {
                         Ok(_t) => {
-                            println!(
-                                "recv: {}",
-                                std::str::from_utf8(&serial_buf).unwrap().green()
-                            );
+                            println!("recv: {}", std::str::from_utf8(&serial_buf)?.green());
                         }
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
