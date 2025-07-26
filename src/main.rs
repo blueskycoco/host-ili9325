@@ -117,7 +117,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let datetime_utc: DateTime<Utc> = time_info.datetime().try_into()?;
     let local_time: DateTime<Local> = DateTime::from(datetime_utc);
     println!(
-        "Local time: {}",
+        "Cur Local time: {}",
         local_time.with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
     );
     let ct: NaiveDateTime = datetime_utc.naive_local();
