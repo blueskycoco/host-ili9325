@@ -21,7 +21,7 @@ async fn main() {
         eprintln!("Failed to open \"{}\". Error: {}", addr, e);
         ::std::process::exit(1);
     });
-    port.set_timeout(Duration::from_millis(3000)).ok();
+    port.set_timeout(Duration::from_millis(30000)).ok();
 
     let mut file = match File::open(&param) {
         Err(err) => { println!("can't open {}: {:?}", param, err); return; }
@@ -32,6 +32,12 @@ async fn main() {
     loop {
          let mut ctn: Vec<u8> = vec![0;2048];
          let mut vec = Vec::new();
+         match port.read_exact(serial_buf.as_mut_slice()) {
+             Ok(_t) => {
+             println!("recv: {}", std::str::from_utf8(&serial_buf).unwrap().green());
+             }
+             Err(e) => { eprintln!("rx {:?}", e); return;}
+         }
          println!("going to send: {} {ofs}", param);
          match file.read_exact(&mut ctn) {
              Ok(_t) => { vec.push(0); ofs += 2048; },
@@ -45,12 +51,6 @@ async fn main() {
          if exit_flag {
              println!("ota finished");
              return;
-         }
-         match port.read_exact(serial_buf.as_mut_slice()) {
-             Ok(_t) => {
-             println!("recv: {}", std::str::from_utf8(&serial_buf).unwrap().green());
-             }
-             Err(e) => { eprintln!("rx {:?}", e); return;}
          }
     }
 }
