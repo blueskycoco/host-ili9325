@@ -35,7 +35,7 @@ async fn main() {
         local_time.with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
     );
 
-    let builder = serialport::new(&addr, 2_000_000)
+    let builder = serialport::new(&addr, 1_500_000)
         .stop_bits(StopBits::One)
         .data_bits(DataBits::Eight);
     println!("{:?}", &builder);
@@ -43,7 +43,7 @@ async fn main() {
         eprintln!("Failed to open \"{}\". Error: {}", addr, e);
         ::std::process::exit(1);
     });
-    port.set_timeout(Duration::from_millis(3000)).ok();
+    port.set_timeout(Duration::from_millis(30000)).ok();
 
     loop {
         for entry in WalkDir::new(&param) {
@@ -90,16 +90,6 @@ async fn main() {
                     y = y + 16;
                     vec.extend(ctn);
 
-                    println!(
-                        "file len: {}, hash {:02x?}\r",
-                        ((file_len[0] as u16) << 8) | file_len[1] as u16,
-                        digest
-                    );
-                    match port.write_all(&vec) {
-                        Ok(_) => {}
-                        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                        Err(e) => eprintln!("{:?}", e),
-                    }
                     match port.read_exact(serial_buf.as_mut_slice()) {
                         Ok(_t) => {
                             println!(
@@ -107,6 +97,16 @@ async fn main() {
                                 std::str::from_utf8(&serial_buf).unwrap().green()
                             );
                         }
+                        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                        Err(e) => eprintln!("{:?}", e),
+                    }
+                    println!(
+                        "file len: {}, hash {:02x?}\r",
+                        ((file_len[0] as u16) << 8) | file_len[1] as u16,
+                        digest
+                    );
+                    match port.write_all(&vec) {
+                        Ok(_) => {}
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
                     }
