@@ -11,7 +11,7 @@ async fn main() {
         .expect("no fw assigned, eg: ./serial-ota /path/to/fw");
     let addr = std::env::args().nth(2).expect("no tty given, /dev/ttyACM0");
 
-    let mut serial_buf: Vec<u8> = vec![0; 7];
+    let mut serial_buf: Vec<u8> = vec![0; 8];
 
     let builder = serialport::new(&addr, 2_000_000)
         .stop_bits(StopBits::One)
@@ -24,33 +24,48 @@ async fn main() {
     port.set_timeout(Duration::from_millis(30000)).ok();
 
     let mut file = match File::open(&param) {
-        Err(err) => { println!("can't open {}: {:?}", param, err); return; }
+        Err(err) => {
+            println!("can't open {}: {:?}", param, err);
+            return;
+        }
         Ok(file) => file,
     };
     let mut ofs = 0;
     let mut exit_flag = false;
     loop {
-         let mut ctn: Vec<u8> = vec![0;2048];
-         let mut vec = Vec::new();
-         match port.read_exact(serial_buf.as_mut_slice()) {
-             Ok(_t) => {
-             println!("recv: {}", std::str::from_utf8(&serial_buf).unwrap().green());
-             }
-             Err(e) => { eprintln!("rx {:?}", e); return;}
-         }
-         println!("going to send: {} {ofs}", param);
-         match file.read_exact(&mut ctn) {
-             Ok(_t) => { vec.push(0); ofs += 2048; },
-             Err(_) => { vec.push(1); exit_flag = true},
-         }
-         vec.extend(ctn);
-         match port.write_all(&vec) {
-             Ok(_) => {}
-             Err(e) => eprintln!("tx {:?}", e),
-         }
-         if exit_flag {
-             println!("ota finished");
-             return;
-         }
+        let mut ctn: Vec<u8> = vec![0; 2048];
+        let mut vec = Vec::new();
+        match port.read_exact(serial_buf.as_mut_slice()) {
+            Ok(_t) => {
+                println!(
+                    "recv: {}",
+                    std::str::from_utf8(&serial_buf).unwrap().green()
+                );
+            }
+            Err(e) => {
+                eprintln!("rx {:?}", e);
+                return;
+            }
+        }
+        println!("going to send: {} {ofs}", param);
+        match file.read_exact(&mut ctn) {
+            Ok(_t) => {
+                vec.push(0);
+                ofs += 2048;
+            }
+            Err(_) => {
+                vec.push(1);
+                exit_flag = true
+            }
+        }
+        vec.extend(ctn);
+        match port.write_all(&vec) {
+            Ok(_) => {}
+            Err(e) => eprintln!("tx {:?}", e),
+        }
+        if exit_flag {
+            println!("ota finished");
+            return;
+        }
     }
 }
