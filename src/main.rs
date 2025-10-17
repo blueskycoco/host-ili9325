@@ -11,7 +11,7 @@ async fn main() {
         .expect("no fw assigned, eg: ./serial-ota /path/to/fw");
     let addr = std::env::args().nth(2).expect("no tty given, /dev/ttyACM0");
 
-    let mut serial_buf: Vec<u8> = vec![0; 8];
+    let mut serial_buf: Vec<u8> = vec![0; 7];
 
     let builder = serialport::new(&addr, 2_000_000)
         .stop_bits(StopBits::One)
@@ -46,6 +46,10 @@ async fn main() {
                 eprintln!("rx {:?}", e);
                 return;
             }
+        }
+        let r = std::str::from_utf8(&serial_buf).unwrap();
+        if !r.contains("send ot") {
+            continue;
         }
         println!("going to send: {} {ofs}", param);
         match file.read_exact(&mut ctn) {
