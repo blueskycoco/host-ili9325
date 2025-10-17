@@ -35,7 +35,7 @@ async fn main() {
         local_time.with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap())
     );
 
-    let builder = serialport::new(&addr, 1_500_000)
+    let builder = serialport::new(&addr, 921_600)
         .stop_bits(StopBits::One)
         .data_bits(DataBits::Eight);
     println!("{:?}", &builder);
