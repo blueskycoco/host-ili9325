@@ -10,6 +10,8 @@ async fn main() {
         .nth(1)
         .expect("no fw assigned, eg: ./serial-ota /path/to/fw");
     let addr = std::env::args().nth(2).expect("no tty given, /dev/ttyACM0");
+    let pkt_len = std::env::args().nth(3).expect("no pkt len, 2048 or 131072, depends on flash layout");
+    let pkt_len = pkt_len.parse::<usize>().unwrap();
 
     let mut serial_buf: Vec<u8> = vec![0; 7];
 
@@ -33,7 +35,7 @@ async fn main() {
     let mut ofs = 0;
     let mut exit_flag = false;
     loop {
-        let mut ctn: Vec<u8> = vec![0; 2048];
+        let mut ctn: Vec<u8> = vec![0; pkt_len];
         let mut vec = Vec::new();
         match port.read_exact(serial_buf.as_mut_slice()) {
             Ok(_t) => {
@@ -55,7 +57,7 @@ async fn main() {
         match file.read_exact(&mut ctn) {
             Ok(_t) => {
                 vec.push(0);
-                ofs += 2048;
+                ofs += pkt_len;
             }
             Err(_) => {
                 vec.push(1);
