@@ -15,7 +15,7 @@ async fn main() {
 
     let mut serial_buf: Vec<u8> = vec![0; 7];
 
-    let builder = serialport::new(&addr, 2_000_000)
+    let builder = serialport::new(&addr, 115_200)
         .stop_bits(StopBits::One)
         .data_bits(DataBits::Eight);
     println!("{:?}", &builder);
